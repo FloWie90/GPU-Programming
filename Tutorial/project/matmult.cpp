@@ -41,28 +41,27 @@ __kernel void addc(int rows, int cols, __global Type *dst, __global Type *src, T
 }
 
 template<class Type>
-__kernel void multi(int rows, int cols, __global Type *dst, __global *src1 , __global *src2, Type m)
+
+__kernel void multi(int rows, int cols, __global Type *dst, __global *src1 , __global *src2)
 {
 	int col = get_global_id(0); //x
-	int row = get_global_id(1); // y
+	int row = get_global_id(1); //y
+	int sol =0;
 
 	if(col >= cols || row >= rows) return;
+	
+	int index = col + row*cols;
 
-	int solution = 0;
-
-	for(int j=0;j<rows;j++){
-		for(int k=0;k<cols;k++){
-			solution += src[j] * 
-		}
+	for(int x= 0; x < rows; x++;){
+		sol+= src1[row * cols + x]* src2[x * cols + col];
 	}
+	dst[index]= sol;
 }
-)";
+}";
 }
 
 int main()
 {
-
-
 
     ocl::Platform platform(ocl::device_type::GPU);
     ocl::Device device = platform.device(ocl::device_type::GPU);
@@ -94,7 +93,7 @@ int main()
 //		 typedef utl::Rand <Type,utl::column_major_tag, utl::uniform_dist_tag> Rand;
 
         // get the kernels.
-		ocl::Kernel &kernel = program.kernel("copy", utl::type::Single);
+		ocl::Kernel &kernel = program.kernel("multi", utl::type::Single);
 
 		size_t rows = 1<<5, cols = 1<<7;
 
@@ -104,35 +103,47 @@ int main()
         // set the index space for the kernels
 		// WorkGroupSize (x,y) = (16,16)
 		// GlobalSize (x,y) = (Rows + Rows%16, Cols + Cols%16)
-		kernel.setWorkSize(16, 16, cols, rows);
+		kernel.setWorkSize(16, 16, cols, cols);
 
         // create host matrices
-		auto h_matrix_in  = Ones(rows,cols);
-        auto h_matrix_out = Zeros(rows,cols);
+		auto h_matrix_in1  = Ones(rows,cols);
+		auto h_matrix_in2  = Ones(cols,rows);
+        auto h_matrix_out = Zeros(cols,cols);
 
 //		std::cout << "Matrix(col_major) before calling copy kernel: " << std::endl << h_matrix_out << std::endl;
 
         // create device buffers on the specified context
-        ocl::Buffer d_matrix_in (context, size_bytes);
+        ocl::Buffer d_matrix_in1(context, size_bytes);
+        ocl::Buffer d_matrix_in2(context, size_bytes);
         ocl::Buffer d_matrix_out(context, size_bytes);
 
         // copy data from host buffers to device buffers
-        d_matrix_in.write(queue, 0, h_matrix_in.data(), size_bytes);
+        d_matrix_in1.write(queue, 0, h_matrix_in.data(), size_bytes);
+        d_matrix_in2.write(queue, 0, h_matrix_in.data(), size_bytes);
 
         // execute both kernels only if the event_write is completed.
         // note that kernel executions are always asynchronous.
-        kernel(queue, int(rows), int(cols), d_matrix_out.id(), d_matrix_in.id());
+        kernel(queue, int(rows), int(cols), d_matrix_out.id(), d_matrix_in1.id() , d_matrix_in2.id());
         queue.finish();
 
         // copy data from device buffers to host buffers
         d_matrix_out.read(queue, h_matrix_out.data(), size_bytes);
-
-
-		if( h_matrix_in == h_matrix_out)
-			std::cout << "Computation was correct." << std::endl;
-		else
-			std::cout << "Computation was incorrect." << std::endl;
-
+		int c=0;
+        for(c=0; c < cols*cols; c++){
+        	if(h_matrix_out[c]/= 32){
+        		std::cout<< "error" << endl;
+        		std::cout<< h_matrix_out[c] << endl;
+        		c = cols*cols+5;
+        	}
+        }
+        }
+		//if( h_matrix_in == h_matrix_out)
+		if(c== cols*cols){
+		std::cout << "Computation was correct." << std::endl;
+		}
+		//else
+	    //std::cout << "Computation was incorrect." << std::endl;
+			
 //		std::cout << "Matrix(col_major) after calling copy kernel: " << std::endl << h_matrix_out << std::endl;
     }
     {
