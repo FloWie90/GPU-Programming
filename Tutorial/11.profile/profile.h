@@ -1,5 +1,5 @@
-#ifndef STUDXPASS_H
-#define STUDXPASS_H
+#ifndef STUD1PASS_H
+#define STUD1PASS_H
 
 #include <iostream>
 #include <stdexcept>
@@ -14,14 +14,14 @@
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
-/*! StudXPass is a Pass and managed by the PassManager.
+/*! Stud1Pass is a Pass and managed by the PassManager.
  *
  *
  * \param Type_ is the value type of the matrices. Here we use float,double or int. other types are also possible
  * \param Format_ is the storage type of the matrices. Here we use row or column-major format.
 */
 template <class Type_,class Format_ , size_t W1, size_t W2>
-class StudXPass1 : public utl::ProfilePass
+class Stud1Pass1 : public utl::ProfilePass
 {
 	using Base   = utl::ProfilePass;
 	using Type   = Type_;
@@ -33,14 +33,14 @@ class StudXPass1 : public utl::ProfilePass
 	using Dim    = utl::Dim;
 public :
 
-	StudXPass1() = delete;
-	StudXPass1(const StudXPass1&) = default;
-	StudXPass1(StudXPass1&&) = default;
-	~StudXPass1() = default;
+	Stud1Pass1() = delete;
+	Stud1Pass1(const Stud1Pass1&) = default;
+	Stud1Pass1(Stud1Pass1&&) = default;
+	~Stud1Pass1() = default;
 
 
 	/*! This is the constructor one should use to initialize the platform. */
-	StudXPass1(const std::string& filename,   /*! Name of the *.cl file */
+	Stud1Pass1(const std::string& filename,   /*! Name of the *.cl file */
 			   const std::string& kernelname, /*! Kernel name within the *.cl file */
 			   const Dim& start,              /*! First dimension e.g. Dim(128,128,128) with Dim[0]=M, Dim[1]=N, Dim[2]=K, */
 			   const Dim& step,               /*! Step dimension e.g. Dim(32,32,32) such that this pass iterates from first to last dimension */
@@ -59,7 +59,7 @@ private :
 	std::string name(const std::string& kernel) const
 	{
 		std::ostringstream oss;
-		oss << "studX_" << kernel << "_" << utl::Type::type<Type>().name() <<  "_B" << W1 << "x" << W2;
+		oss << "stud1_" << kernel << "_" << utl::Type::type<Type>().name() <<  "_B" << W1 << "x" << W2;
 		return oss.str();
 	}
 
@@ -79,7 +79,7 @@ private :
  * You do not have to change the constructor definition.
 */
 template <class Type_,class Format_, size_t W1, size_t W2>
-StudXPass1<Type_,Format_,W1,W2>::StudXPass1(
+Stud1Pass1<Type_,Format_,W1,W2>::Stud1Pass1(
 		const std::string& file,
 		const std::string& kernel,
 		const utl::Dim& start,
@@ -114,12 +114,12 @@ StudXPass1<Type_,Format_,W1,W2>::StudXPass1(
  * \param dim Dimension which is between the first and the last.
 */
 template <class Type_,class Format_ , size_t W1, size_t W2>
-utl::Seconds StudXPass1<Type_,Format_, W1,W2>::prof( utl::Dim const& dim )
+utl::Seconds Stud1Pass1<Type_,Format_, W1,W2>::prof( utl::Dim const& dim )
 {
 
 	  const size_t M = dim[0];
 	  const size_t N = dim[1];
-	  //const size_t K = dim[2];
+	  const size_t K = dim[2];
 
 	  static_assert(W1 >= 8, "W1 < 8");
 
@@ -134,11 +134,11 @@ utl::Seconds StudXPass1<Type_,Format_, W1,W2>::prof( utl::Dim const& dim )
 	  if ( ! program_.isBuilt() ) { throw std::runtime_error( "program not built" ); }
 	  if ( ! kernel_->created() ) { throw std::runtime_error( "kernel not created" ); }
 
-	  kernel_->setWorkSize( W1, M );
+	  kernel_->setWorkSize( W1, W2, M, N);
 
-	  const size_t numResBytes = sizeof (Type) * M * 1;
-	  const size_t numLhsBytes = sizeof (Type) * M * N;
-	  const size_t numRhsBytes = sizeof (Type) * N * 1;
+	  const size_t numResBytes = sizeof (Type) * M * N;
+	  const size_t numLhsBytes = sizeof (Type) * K * N;
+	  const size_t numRhsBytes = sizeof (Type) * M * K;
 
 	  ocl::Buffer bufRes( context_, numResBytes, ocl::Buffer::WriteOnly );
 	  ocl::Buffer bufLhs( context_, numLhsBytes, ocl::Buffer::ReadOnly );
@@ -149,8 +149,8 @@ utl::Seconds StudXPass1<Type_,Format_, W1,W2>::prof( utl::Dim const& dim )
 	  Matrix lhs;
 	  Matrix rhs;
 	  if(testing_){
-		  lhs = Ones ( M, N );
-		  rhs = Ones ( N, 1 );
+		  lhs = Ones ( N, K );
+		  rhs = Ones ( K, M );
 		  for ( size_t i = 0; i < M * N; ++i ) lhs[i] = i % N;
 		  bufLhs.write( queue_, 0u, lhs.data(), numLhsBytes );
 		  bufRhs.write( queue_, 0u, rhs.data(), numRhsBytes );
@@ -158,19 +158,21 @@ utl::Seconds StudXPass1<Type_,Format_, W1,W2>::prof( utl::Dim const& dim )
 
 
 	  // Function which repeated iter_ times from the Passmanager.
-	  auto lambda = [](ocl::Kernel& kernel, ocl::Queue& queue, ocl::Buffer& bufRes, const ocl::Buffer& bufLhs, const ocl::Buffer& bufRhs)
+	  auto lambda = [](ocl::Kernel& kernel, ocl::Queue& queue, ocl::Buffer& bufRes, 
+	  	const ocl::Buffer& bufLhs, const ocl::Buffer& bufRhs, const int N, const int K , const int M)
 	  {
-		  kernel( queue, bufRes.id(), bufLhs.id(), bufRhs.id() );
+		  kernel(queue, bufRes.id(), bufLhs.id(), bufRhs.id(), int(N), int(K), int(M));  // TODO!!!!! ADDED int N, int M
 		  queue.finish();
 	  };
 
-	  auto t = this->call(std::bind(lambda, std::ref(*kernel_), std::ref(queue_), std::ref(bufRes), std::cref(bufLhs), std::cref(bufRhs)));
+	  auto t = this->call(std::bind(lambda, std::ref(*kernel_), std::ref(queue_), std::ref(bufRes), 
+	  	std::cref(bufLhs), std::cref(bufRhs), std::cref(N), std::cref(K), std::cref(M)));
 
 
 
 	  if( testing_ )
 	  {
-		  Matrix res = Zeros( M, 1 );
+		  Matrix res = Zeros( N,M );
 		  bufRes.read( queue_, 0u, res.data(), numResBytes);
 
 		  auto const ref  = lhs * rhs;
@@ -202,13 +204,13 @@ utl::Seconds StudXPass1<Type_,Format_, W1,W2>::prof( utl::Dim const& dim )
  * \param dim Dimension which is between the first and the last.
 */
 template <class Type_,class Format_ , size_t W1, size_t W2>
-double StudXPass1<Type_,Format_, W1,W2>::ops( utl::Dim const& dim )
+double Stud1Pass1<Type_,Format_, W1,W2>::ops( utl::Dim const& dim )
 {
 	  size_t const M = dim[0];
 	  size_t const N = dim[1];
-	  //size_t const K = dim[2];
+	  size_t const K = dim[2];
 
-	  return M * (N + (N - 1u));
+	  return (M * (N + (N - 1u)) * K);
 }
 
 #endif

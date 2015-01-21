@@ -30,8 +30,9 @@ int main( int argc, char** argv )
 	const utl::Dim last  = utl::Dim(l,l,l);
 	const utl::Dim step  = utl::Dim(s,s,s);
 
-	mgr << new StudXPass1<float,utl::row_major_tag,256u,1u>    ("11.profile/profile1.cl","matvec1_rmajor", first, step, last, testing, 10);
-	mgr << new StudXPass1<float,utl::column_major_tag,256u,1u> ("11.profile/profile1.cl","matvec1_cmajor", first, step, last, testing, 10);
+	//mgr << new Stud1Pass1<float,utl::row_major_tag,16u,16u>    ("11.profile/profile1.cl","matmat_rmajor", first, step, last, testing, 10);
+	//mgr << new Stud1Pass1<float,utl::column_major_tag,16u,16u> ("11.profile/profile1.cl","matmat_cmajor", first, step, last, testing, 10);
+	mgr << new Stud1Pass1<float,utl::row_major_tag,16u,16u>    ("11.profile/profile1.cl","matmat_cmajor_f4", first, step, last, testing, 10);
 
     mgr.run();
     mgr.write( std::cout );
