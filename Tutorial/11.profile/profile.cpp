@@ -32,7 +32,7 @@ int main( int argc, char** argv )
 
 	//mgr << new Stud1Pass1<float,utl::row_major_tag,16u,16u>    ("11.profile/profile1.cl","matmat_rmajor", first, step, last, testing, 10);
 	//mgr << new Stud1Pass1<float,utl::column_major_tag,16u,16u> ("11.profile/profile1.cl","matmat_cmajor", first, step, last, testing, 10);
-	mgr << new Stud1Pass1<float,utl::row_major_tag,16u,16u>    ("11.profile/profile1.cl","matmat_cmajor_f4", first, step, last, testing, 10);
+	mgr << new Stud1Pass1<float,utl::column_major_tag,8u,8u>    ("11.profile/profile1.cl","matmat_cmajor_f4", first, step, last, testing, 10);
 
     mgr.run();
     mgr.write( std::cout );

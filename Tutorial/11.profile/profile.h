@@ -134,7 +134,7 @@ utl::Seconds Stud1Pass1<Type_,Format_, W1,W2>::prof( utl::Dim const& dim )
 	  if ( ! program_.isBuilt() ) { throw std::runtime_error( "program not built" ); }
 	  if ( ! kernel_->created() ) { throw std::runtime_error( "kernel not created" ); }
 
-	  kernel_->setWorkSize( W1, W2, M, N);
+	  kernel_->setWorkSize( W1, W2, N, M);
 
 	  const size_t numResBytes = sizeof (Type) * M * N;
 	  const size_t numLhsBytes = sizeof (Type) * K * N;

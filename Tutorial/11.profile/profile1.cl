@@ -83,7 +83,7 @@ __kernel void matmat_cmajor( __global Type *dst, __global Type *src1 , __global 
 
 template<class Type>
 
-#define BLOCK_SIZE 16
+#define BLOCK_SIZE 8
 __kernel void matmat_cmajor_f4( __global Type *dst, __global Type *src1 , __global Type *src2, 
 	int N_scr1, int K_dst, int M_scr2)
 {
@@ -124,7 +124,7 @@ __kernel void matmat_cmajor_f4( __global Type *dst, __global Type *src1 , __glob
         }
         barrier(CLK_LOCAL_MEM_FENCE);
     }
-    dst[BLOCK_SIZE*i + idX + N_dim*(BLOCK_SIZE*j+idY)] = sol.x+sol.y+sol.z+sol.w;
+    dst[BLOCK_SIZE*i + idX + N_dim*(BLOCK_SIZE*j+idY)] = sol.x + sol.y + sol.z + sol.w;
 
 
 }
